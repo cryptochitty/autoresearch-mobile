@@ -3,8 +3,15 @@ import 'package:flutter/services.dart';
 
 class ResponseCard extends StatelessWidget {
   final String text;
+  final bool canDownload;
+  final VoidCallback? onDownload;
 
-  const ResponseCard({super.key, required this.text});
+  const ResponseCard({
+    super.key,
+    required this.text,
+    this.canDownload = false,
+    this.onDownload,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +23,10 @@ class ResponseCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, size: 16),
+                const Icon(Icons.article, size: 16),
                 const SizedBox(width: 8),
                 const Text(
-                  'AI Response',
+                  'Research Result',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
@@ -33,6 +40,20 @@ class ResponseCard extends StatelessWidget {
                   },
                   tooltip: 'Copy',
                 ),
+                if (canDownload)
+                  IconButton(
+                    icon: const Icon(Icons.download, size: 18, color: Color(0xFF6C63FF)),
+                    onPressed: onDownload,
+                    tooltip: 'Download paper',
+                  )
+                else
+                  Tooltip(
+                    message: 'Subscribe ₹499/mo to download papers',
+                    child: IconButton(
+                      icon: const Icon(Icons.lock, size: 18, color: Colors.grey),
+                      onPressed: null,
+                    ),
+                  ),
               ],
             ),
             const Divider(),

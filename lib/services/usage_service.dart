@@ -15,7 +15,8 @@ class UsageService {
     if (!doc.exists) {
       final usage = UserUsage(
         userId: userId,
-        requestsToday: 0,
+        papersViewed: 0,
+        papersDownloaded: 0,
         lastResetDate: _todayString(),
         isPremium: false,
       );
@@ -26,11 +27,12 @@ class UsageService {
     final data = doc.data()!;
     final usage = UserUsage.fromMap({...data, 'userId': userId});
 
-    // Reset daily count if it's a new day
+    // Reset daily counts on new day
     if (usage.lastResetDate != _todayString()) {
       final reset = UserUsage(
         userId: userId,
-        requestsToday: 0,
+        papersViewed: 0,
+        papersDownloaded: 0,
         lastResetDate: _todayString(),
         isPremium: usage.isPremium,
       );
@@ -41,9 +43,15 @@ class UsageService {
     return usage;
   }
 
-  Future<void> incrementUsage(String userId) async {
+  Future<void> incrementViewed(String userId) async {
     await _db.collection('users').doc(userId).update({
-      'requestsToday': FieldValue.increment(1),
+      'papersViewed': FieldValue.increment(1),
+    });
+  }
+
+  Future<void> incrementDownloaded(String userId) async {
+    await _db.collection('users').doc(userId).update({
+      'papersDownloaded': FieldValue.increment(1),
     });
   }
 

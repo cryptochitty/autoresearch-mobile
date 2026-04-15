@@ -1,25 +1,31 @@
 class UserUsage {
   final String userId;
-  final int requestsToday;
+  final int papersViewed;
+  final int papersDownloaded;
   final String lastResetDate;
   final bool isPremium;
 
   const UserUsage({
     required this.userId,
-    required this.requestsToday,
+    required this.papersViewed,
+    required this.papersDownloaded,
     required this.lastResetDate,
     required this.isPremium,
   });
 
-  static const int freeLimit = 5;
+  static const int freeViewLimit = 1;
+  static const int premiumDownloadLimit = 3;
 
-  bool get canMakeRequest => isPremium || requestsToday < freeLimit;
-  int get remainingFreeRequests => (freeLimit - requestsToday).clamp(0, freeLimit);
+  bool get canViewPaper => isPremium || papersViewed < freeViewLimit;
+  bool get canDownloadPaper => isPremium && papersDownloaded < premiumDownloadLimit;
+
+  int get remainingDownloads => (premiumDownloadLimit - papersDownloaded).clamp(0, premiumDownloadLimit);
 
   factory UserUsage.fromMap(Map<String, dynamic> map) {
     return UserUsage(
       userId: map['userId'] ?? '',
-      requestsToday: map['requestsToday'] ?? 0,
+      papersViewed: map['papersViewed'] ?? 0,
+      papersDownloaded: map['papersDownloaded'] ?? 0,
       lastResetDate: map['lastResetDate'] ?? '',
       isPremium: map['isPremium'] ?? false,
     );
@@ -27,7 +33,8 @@ class UserUsage {
 
   Map<String, dynamic> toMap() => {
     'userId': userId,
-    'requestsToday': requestsToday,
+    'papersViewed': papersViewed,
+    'papersDownloaded': papersDownloaded,
     'lastResetDate': lastResetDate,
     'isPremium': isPremium,
   };

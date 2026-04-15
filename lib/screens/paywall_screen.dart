@@ -20,7 +20,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       final success = await _subscriptionService.purchasePremium();
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Welcome to Premium!')),
+          const SnackBar(content: Text('Welcome to AutoResearch Pro!')),
         );
         Navigator.pop(context);
       }
@@ -42,7 +42,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              restored ? 'Premium restored!' : 'No active subscription found.',
+              restored ? 'Subscription restored!' : 'No active subscription found.',
             ),
           ),
         );
@@ -68,27 +68,43 @@ class _PaywallScreenState extends State<PaywallScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 20),
-            const Icon(Icons.auto_awesome, size: 80, color: Color(0xFF6C63FF)),
+            const Icon(Icons.science, size: 80, color: Color(0xFF6C63FF)),
             const SizedBox(height: 24),
             const Text(
-              'Unlock AutoResearch Pro',
+              'AutoResearch Pro',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             const Text(
-              'Get unlimited AI research every day',
+              'Download & save research papers every day',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 40),
 
-            // Feature list
+            // Free vs Pro comparison
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _planRow('Free', 'View 1 paper/day', false),
+                  Divider(height: 1, color: Colors.grey.shade300),
+                  _planRow('Pro ₹499/mo', 'Download 3 papers/day', true),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
             ...[
-              ('Unlimited AI requests', Icons.all_inclusive),
-              ('Priority responses', Icons.speed),
-              ('Advanced AI models', Icons.psychology),
-              ('No daily limits', Icons.lock_open),
+              ('Download papers as PDF', Icons.download),
+              ('3 downloads per day', Icons.file_download),
+              ('Full paper content', Icons.article),
+              ('Priority AI analysis', Icons.psychology),
             ].map(
               (item) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -119,7 +135,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
               child: _loading
                   ? const CircularProgressIndicator(color: Colors.white)
                   : const Text(
-                      'Subscribe \$4.99 / month',
+                      'Subscribe ₹499 / month',
                       style: TextStyle(fontSize: 18),
                     ),
             ),
@@ -131,13 +147,35 @@ class _PaywallScreenState extends State<PaywallScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Cancel anytime. Billed monthly.',
+              'Cancel anytime. Billed monthly in INR.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _planRow(String plan, String benefit, bool isPro) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(
+            isPro ? Icons.star : Icons.star_border,
+            color: isPro ? const Color(0xFF6C63FF) : Colors.grey,
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(plan, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(benefit, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   UserUsage? _usage;
   String? _response;
   bool _loading = false;
+  bool _canDownload = false;
   String? _error;
 
   @override
@@ -36,19 +37,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadUsage() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-
-    // Sync premium status from RevenueCat
     await _subscriptionService.checkPremiumStatus(user.uid);
-
     final usage = await _usageService.getUsage(user.uid);
     setState(() => _usage = usage);
   }
 
-  Future<void> _ask() async {
+  Future<void> _search() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _usage == null) return;
 
-    if (!_usage!.canMakeRequest) {
+    if (!_usage!.canViewPaper) {
       _showPaywall();
       return;
     }
@@ -56,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final prompt = _promptController.text.trim();
     if (prompt.isEmpty) return;
 
-    setState(() { _loading = true; _error = null; _response = null; });
+    setState(() { _loading = true; _error = null; _response = null; _canDownload = false; });
 
     try {
       final response = await _aiService.ask(
@@ -64,15 +62,36 @@ class _HomeScreenState extends State<HomeScreen> {
         isPremium: _usage!.isPremium,
         userId: user.uid,
       );
-      await _usageService.incrementUsage(user.uid);
+      await _usageService.incrementViewed(user.uid);
       await _loadUsage();
-      setState(() => _response = response);
+      setState(() {
+        _response = response;
+        _canDownload = _usage!.canDownloadPaper;
+      });
       _promptController.clear();
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Future<void> _download() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _usage == null || _response == null) return;
+
+    if (!_usage!.canDownloadPaper) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Download limit reached (3/day). Try again tomorrow.')),
+      );
+      return;
+    }
+
+    await _usageService.incrementDownloaded(user.uid);
+    await _loadUsage();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Downloaded! ${_usage!.remainingDownloads} downloads remaining today.')),
+    );
   }
 
   void _showPaywall() {
@@ -84,8 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('AutoResearch'),
@@ -105,23 +122,28 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Usage bar
-            if (_usage != null && !_usage!.isPremium)
+            // Usage banner
+            if (_usage != null)
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      const Icon(Icons.bolt),
+                      const Icon(Icons.article),
                       const SizedBox(width: 8),
-                      Text(
-                        '${_usage!.remainingFreeRequests} free requests left today',
-                      ),
+                      _usage!.isPremium
+                          ? Text('${_usage!.remainingDownloads} downloads left today')
+                          : Text(
+                              _usage!.papersViewed < UserUsage.freeViewLimit
+                                  ? '1 free paper available'
+                                  : 'Free limit reached',
+                            ),
                       const Spacer(),
-                      TextButton(
-                        onPressed: _showPaywall,
-                        child: const Text('Upgrade'),
-                      ),
+                      if (!_usage!.isPremium)
+                        TextButton(
+                          onPressed: _showPaywall,
+                          child: const Text('Upgrade ₹499/mo'),
+                        ),
                     ],
                   ),
                 ),
@@ -129,12 +151,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
-            // Response area
             Expanded(
               child: _response != null
-                  ? ResponseCard(text: _response!)
+                  ? ResponseCard(
+                      text: _response!,
+                      canDownload: _canDownload,
+                      onDownload: _download,
+                    )
                   : const Center(
-                      child: Text('Ask me anything...'),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.search, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('Search for research papers'),
+                          SizedBox(height: 8),
+                          Text(
+                            'Free: View 1 paper/day\nPro ₹499/mo: Download 3 papers/day',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                        ],
+                      ),
                     ),
             ),
 
@@ -146,31 +184,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 8),
 
-            // Input area
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _promptController,
                     decoration: const InputDecoration(
-                      hintText: 'Type your question...',
+                      hintText: 'Search research topic...',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.search),
                     ),
-                    maxLines: 3,
-                    minLines: 1,
-                    onSubmitted: (_) => _ask(),
+                    onSubmitted: (_) => _search(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
-                  onPressed: _loading ? null : _ask,
+                  onPressed: _loading ? null : _search,
                   child: _loading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.send),
+                      : const Icon(Icons.search),
                 ),
               ],
             ),
