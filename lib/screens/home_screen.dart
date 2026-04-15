@@ -28,6 +28,14 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _canDownload = false;
   String? _error;
 
+  // Real-time research tracking
+  int _currentAgent = 0;
+  String _agentStatus = '';
+  final List<String> _agentNames = [
+    'Discovery', 'Reader', 'Innovation', 'Validation',
+    'Writer', 'Builder', 'Evaluation', 'Explainer',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -51,28 +59,63 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final prompt = _promptController.text.trim();
-    if (prompt.isEmpty) return;
+    final topic = _promptController.text.trim();
+    if (topic.isEmpty) return;
 
-    setState(() { _loading = true; _error = null; _response = null; _canDownload = false; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _response = null;
+      _canDownload = false;
+      _currentAgent = 0;
+      _agentStatus = 'Starting research...';
+    });
 
     try {
-      final response = await _aiService.ask(
-        prompt: prompt,
-        isPremium: _usage!.isPremium,
-        userId: user.uid,
-      );
+      if (_usage!.isPremium) {
+        // Premium: use full real-time 8-agent pipeline
+        await for (final event in _aiService.streamResearch(topic)) {
+          if (!mounted) break;
+
+          final type = event['type'] as String? ?? '';
+
+          if (type == 'agent_start') {
+            setState(() {
+              _currentAgent = (event['agent_index'] as int? ?? 0);
+              _agentStatus = '${_agentNames[_currentAgent]} Agent working...';
+            });
+          } else if (type == 'complete') {
+            final sections = event['sections'] as Map<String, dynamic>? ?? {};
+            final result = sections.values
+                .where((v) => v != null && v.toString().isNotEmpty)
+                .join('\n\n---\n\n');
+            setState(() {
+              _response = result.isNotEmpty ? result : event['summary']?.toString() ?? 'Research complete.';
+              _agentStatus = 'Research complete!';
+            });
+          } else if (type == 'error') {
+            setState(() => _error = event['message']?.toString() ?? 'Research failed.');
+          }
+        }
+      } else {
+        // Free: simple single-paper summary
+        setState(() => _agentStatus = 'Searching...');
+        final response = await _aiService.ask(
+          prompt: 'Find and summarize one research paper about: $topic',
+          isPremium: false,
+          userId: user.uid,
+        );
+        setState(() => _response = response);
+      }
+
       await _usageService.incrementViewed(user.uid);
       await _loadUsage();
-      setState(() {
-        _response = response;
-        _canDownload = _usage!.canDownloadPaper;
-      });
+      setState(() => _canDownload = _usage!.canDownloadPaper);
       _promptController.clear();
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
-      setState(() => _loading = false);
+      setState(() { _loading = false; _agentStatus = ''; });
     }
   }
 
@@ -82,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!_usage!.canDownloadPaper) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Download limit reached (3/day). Try again tomorrow.')),
+        const SnackBar(content: Text('Download limit reached (3/month).')),
       );
       return;
     }
@@ -135,8 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? Text('${_usage!.remainingDownloads} downloads left this month')
                           : Text(
                               _usage!.papersViewed < UserUsage.freeViewLimit
-                                  ? '1 free paper available'
-                                  : 'Free limit reached',
+                                  ? '1 free paper available today'
+                                  : 'Free limit reached today',
                             ),
                       const Spacer(),
                       if (!_usage!.isPremium)
@@ -151,6 +194,40 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 16),
 
+            // Agent progress (premium only)
+            if (_loading && _usage?.isPremium == true)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_agentStatus, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: _agentNames.isEmpty ? 0 : (_currentAgent + 1) / _agentNames.length,
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        children: _agentNames.asMap().entries.map((e) {
+                          final done = e.key < _currentAgent;
+                          final active = e.key == _currentAgent;
+                          return Chip(
+                            label: Text(e.value, style: const TextStyle(fontSize: 11)),
+                            backgroundColor: done
+                                ? Colors.green.withOpacity(0.3)
+                                : active
+                                    ? const Color(0xFF6C63FF).withOpacity(0.3)
+                                    : null,
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             Expanded(
               child: _response != null
                   ? ResponseCard(
@@ -158,18 +235,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       canDownload: _canDownload,
                       onDownload: _download,
                     )
-                  : const Center(
+                  : Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.search, size: 64, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text('Search for research papers'),
-                          SizedBox(height: 8),
+                          const Icon(Icons.science, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text('Search for research papers'),
+                          const SizedBox(height: 8),
                           Text(
-                            'Free: View 1 paper/day\nPro ₹499/mo: Download 3 papers/day',
+                            _usage?.isPremium == true
+                                ? 'Pro: Full 8-agent analysis + 3 downloads/month'
+                                : 'Free: View 1 paper/day\nPro ₹499/mo: Full research pipeline',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                            style: const TextStyle(color: Colors.grey, fontSize: 13),
                           ),
                         ],
                       ),
@@ -190,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: TextField(
                     controller: _promptController,
                     decoration: const InputDecoration(
-                      hintText: 'Search research topic...',
+                      hintText: 'Enter research topic...',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.search),
                     ),
