@@ -9,6 +9,11 @@ class UsageService {
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
+  String _thisMonthString() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}';
+  }
+
   Future<UserUsage> getUsage(String userId) async {
     final doc = await _db.collection('users').doc(userId).get();
 
@@ -18,6 +23,7 @@ class UsageService {
         papersViewed: 0,
         papersDownloaded: 0,
         lastResetDate: _todayString(),
+        lastDownloadResetMonth: _thisMonthString(),
         isPremium: false,
       );
       await _db.collection('users').doc(userId).set(usage.toMap());
@@ -25,19 +31,38 @@ class UsageService {
     }
 
     final data = doc.data()!;
-    final usage = UserUsage.fromMap({...data, 'userId': userId});
+    var usage = UserUsage.fromMap({...data, 'userId': userId});
 
-    // Reset daily counts on new day
+    // Reset daily view count on new day
     if (usage.lastResetDate != _todayString()) {
-      final reset = UserUsage(
+      usage = UserUsage(
         userId: userId,
         papersViewed: 0,
-        papersDownloaded: 0,
+        papersDownloaded: usage.papersDownloaded,
         lastResetDate: _todayString(),
+        lastDownloadResetMonth: usage.lastDownloadResetMonth,
         isPremium: usage.isPremium,
       );
-      await _db.collection('users').doc(userId).update(reset.toMap());
-      return reset;
+      await _db.collection('users').doc(userId).update({
+        'papersViewed': 0,
+        'lastResetDate': _todayString(),
+      });
+    }
+
+    // Reset monthly download count on new month
+    if (usage.lastDownloadResetMonth != _thisMonthString()) {
+      usage = UserUsage(
+        userId: userId,
+        papersViewed: usage.papersViewed,
+        papersDownloaded: 0,
+        lastResetDate: usage.lastResetDate,
+        lastDownloadResetMonth: _thisMonthString(),
+        isPremium: usage.isPremium,
+      );
+      await _db.collection('users').doc(userId).update({
+        'papersDownloaded': 0,
+        'lastDownloadResetMonth': _thisMonthString(),
+      });
     }
 
     return usage;

@@ -93,7 +93,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 children: [
                   _planRow('Free', 'View 1 paper/day', false),
                   Divider(height: 1, color: Colors.grey.shade300),
-                  _planRow('Pro ₹499/mo', 'Download 3 papers/day', true),
+                  _planRow('Pro ₹499/mo', 'Download 3 papers/month', true),
                 ],
               ),
             ),
@@ -102,7 +102,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
             ...[
               ('Download papers as PDF', Icons.download),
-              ('3 downloads per day', Icons.file_download),
+              ('3 downloads per month', Icons.file_download),
               ('Full paper content', Icons.article),
               ('Priority AI analysis', Icons.psychology),
             ].map(

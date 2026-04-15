@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _usageService.incrementDownloaded(user.uid);
     await _loadUsage();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Downloaded! ${_usage!.remainingDownloads} downloads remaining today.')),
+      SnackBar(content: Text('Downloaded! ${_usage!.remainingDownloads} downloads remaining this month.')),
     );
   }
 
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Icon(Icons.article),
                       const SizedBox(width: 8),
                       _usage!.isPremium
-                          ? Text('${_usage!.remainingDownloads} downloads left today')
+                          ? Text('${_usage!.remainingDownloads} downloads left this month')
                           : Text(
                               _usage!.papersViewed < UserUsage.freeViewLimit
                                   ? '1 free paper available'
