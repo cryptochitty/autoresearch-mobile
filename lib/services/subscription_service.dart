@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'usage_service.dart';
 
@@ -7,12 +8,10 @@ class SubscriptionService {
   static const String premiumMonthly = 'premium_monthly';
 
   Future<bool> checkPremiumStatus(String userId) async {
+    if (kIsWeb) return false; // RevenueCat not supported on web
     try {
       final customerInfo = await Purchases.getCustomerInfo();
-      final isPremium =
-          customerInfo.entitlements.active.containsKey('premium');
-
-      // Sync with Firestore
+      final isPremium = customerInfo.entitlements.active.containsKey('premium');
       await _usageService.setPremium(userId, isPremium);
       return isPremium;
     } catch (e) {
@@ -21,6 +20,7 @@ class SubscriptionService {
   }
 
   Future<bool> purchasePremium() async {
+    if (kIsWeb) return false;
     try {
       final offerings = await Purchases.getOfferings();
       final current = offerings.current;
@@ -38,6 +38,7 @@ class SubscriptionService {
   }
 
   Future<bool> restorePurchases(String userId) async {
+    if (kIsWeb) return false;
     final customerInfo = await Purchases.restorePurchases();
     final isPremium = customerInfo.entitlements.active.containsKey('premium');
     await _usageService.setPremium(userId, isPremium);

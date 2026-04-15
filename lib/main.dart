@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
@@ -13,9 +14,13 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  await Purchases.configure(
-    PurchasesConfiguration('YOUR_REVENUECAT_API_KEY'),
-  );
+  // RevenueCat only works on Android and iOS, not web
+  if (!kIsWeb) {
+    final key = defaultTargetPlatform == TargetPlatform.android
+        ? 'YOUR_REVENUECAT_ANDROID_KEY'
+        : 'YOUR_REVENUECAT_IOS_KEY';
+    await Purchases.configure(PurchasesConfiguration(key));
+  }
 
   runApp(const MyApp());
 }
