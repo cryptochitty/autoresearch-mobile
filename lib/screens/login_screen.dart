@@ -37,17 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _googleSignIn() async {
-    setState(() { _loading = true; _error = null; });
-    try {
-      await _authService.signInWithGoogle();
-    } catch (e) {
-      setState(() => _error = e.toString());
-    } finally {
-      setState(() => _loading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,13 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : Text(_isLogin ? 'Sign In' : 'Sign Up'),
-              ),
-              const SizedBox(height: 12),
-
-              OutlinedButton.icon(
-                onPressed: _loading ? null : _googleSignIn,
-                icon: const Icon(Icons.login),
-                label: const Text('Continue with Google'),
               ),
               const SizedBox(height: 16),
 
