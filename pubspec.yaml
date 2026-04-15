@@ -20,6 +20,9 @@ dependencies:
   # HTTP
   http: ^1.2.0
 
+  # WebView
+  webview_flutter: ^4.7.0
+
   # UI
   google_fonts: ^6.1.0
   lottie: ^3.0.0
